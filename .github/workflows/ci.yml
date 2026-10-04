@@ -1,0 +1,27 @@
+name: Web checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm run build
+      - run: npm run test:smoke
+      - run: docker build -t nebula-tech:ci .
+      - name: Check container health
+        run: |
+          docker run -d --name nebula-check -e NEBULA_DEMO_ENABLED=true -p 3000:3000 nebula-tech:ci
+          trap 'docker logs nebula-check; docker rm -f nebula-check' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail http://localhost:3000/api/health; then exit 0; fi
+            sleep 2
+          done
+          exit 1

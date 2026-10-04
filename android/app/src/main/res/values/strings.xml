@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Nebula Tech</string>
+    <string name="title_activity_main">Nebula Tech</string>
+    <string name="package_name">com.nebulatech.languages</string>
+    <string name="custom_url_scheme">com.nebulatech.languages</string>
+</resources>

@@ -1,0 +1,18 @@
+{
+  "note": "Explicit, reviewable corrections applied while importing E:/Nebula_Tech/Ki-Roberto. Every entry is reported by scripts/analyze-content.mjs so the source drop can be repaired at origin.",
+  "answers": [
+    {
+      "id": "12831011-13",
+      "from": "añade",
+      "to": "ánade",
+      "reason": "Spanish synonym for duck mistyped; 'añade' is the verb 'to add'."
+    }
+  ],
+  "media": [
+    {
+      "mediaCode": "00821033",
+      "conceptCode": "00821031",
+      "reason": "Serial digits differ between the picture and its multiple-choice record; mode, family and level match."
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "nebula-dev",
+      "runtimeExecutable": "C:\\Users\\rober\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.exe",
+      "runtimeArgs": [
+        "node_modules/vinext/dist/cli.js",
+        "dev",
+        "--port",
+        "5173"
+      ],
+      "port": 5173
+    }
+  ]
+}
