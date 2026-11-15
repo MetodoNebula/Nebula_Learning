@@ -46,7 +46,7 @@ const T = {
     other: 'Another language (picture mode)',
     level: 'Level',
     answering: 'Answering',
-    modes: { auto: 'As authored', write: 'Always type', select: 'Always choose' },
+    modes: { auto: 'As authored', write: 'Type when possible', select: 'Choose options' },
     exercises: (n) => `${n} ${n === 1 ? 'exercise' : 'exercises'}`,
     empty: 'no content',
     start: 'Start',
@@ -87,8 +87,8 @@ const T = {
     answering: 'Réponses',
     modes: {
       auto: 'Comme dans les fiches',
-      write: 'Toujours écrire',
-      select: 'Toujours choisir',
+      write: 'Écrire si possible',
+      select: 'Choisir les options',
     },
     exercises: (n) => `${n} exercice${n === 1 ? '' : 's'}`,
     empty: 'sans contenu',
@@ -130,8 +130,8 @@ const T = {
     answering: 'Respuestas',
     modes: {
       auto: 'Como en las fichas',
-      write: 'Siempre escribir',
-      select: 'Siempre elegir',
+      write: 'Escribir cuando sea posible',
+      select: 'Elegir opciones',
     },
     exercises: (n) => `${n} ejercicio${n === 1 ? '' : 's'}`,
     empty: 'sin contenido',
@@ -173,8 +173,8 @@ const T = {
     answering: 'Risposte',
     modes: {
       auto: 'Come nelle schede',
-      write: 'Sempre scrivere',
-      select: 'Sempre scegliere',
+      write: 'Scrivere se possibile',
+      select: 'Scegliere le opzioni',
     },
     exercises: (n) => `${n} esercizi${n === 1 ? 'o' : ''}`,
     empty: 'senza contenuti',
@@ -216,8 +216,8 @@ const T = {
     answering: 'Antworten',
     modes: {
       auto: 'Wie in den Karten',
-      write: 'Immer schreiben',
-      select: 'Immer auswählen',
+      write: 'Schreiben, wenn möglich',
+      select: 'Antworten auswählen',
     },
     exercises: (n) => `${n} ${n === 1 ? 'Übung' : 'Übungen'}`,
     empty: 'ohne Inhalt',
@@ -279,6 +279,13 @@ const exerciseTypeLabels = {
   3: { title: 'Elige ejercicio y nivel', intro: 'Selecciona qué quieres practicar y después el nivel.', label: 'Tipo de ejercicio', all: 'Todos los tipos' },
   4: { title: "Scegli l’esercizio e il livello", intro: 'Scegli cosa esercitare e poi il livello.', label: 'Tipo di esercizio', all: 'Tutti i tipi' },
   5: { title: 'Wähle Übung und Stufe', intro: 'Wähle zuerst den Übungstyp und dann die Stufe.', label: 'Übungstyp', all: 'Alle Übungstypen' },
+};
+const advancedLabels = {
+  1: { title: 'More options', filter: 'Original content group', all: 'All groups' },
+  2: { title: "Plus d’options", filter: "Groupe de contenu d’origine", all: 'Tous les groupes' },
+  3: { title: 'Más opciones', filter: 'Grupo original de contenido', all: 'Todos los grupos' },
+  4: { title: 'Altre opzioni', filter: 'Gruppo originale dei contenuti', all: 'Tutti i gruppi' },
+  5: { title: 'Weitere Optionen', filter: 'Ursprüngliche Inhaltsgruppe', all: 'Alle Gruppen' },
 };
 
 const state = {
@@ -414,6 +421,9 @@ function menu(message = '', preserveScroll = false) {
       <img src="${flags[id]}" alt="" width="76" height="52" />
       <strong>${esc(endonyms[id])}</strong>
     </button>`;
+  const stepLabel = (number, label) => number < state.setupStep
+    ? `<button class="setup-step done" type="button" data-step="${number}"><i>${number}</i>${esc(label)}</button>`
+    : `<span class="setup-step ${number === state.setupStep ? 'active' : ''}" ${number === state.setupStep ? 'aria-current="step"' : ''}><i>${number}</i>${esc(label)}</span>`;
   shell(`<section class="grid step-${state.setupStep}">
     <aside class="content-summary" ${state.setupStep !== 3 ? 'hidden' : ''}>
       <p class="eyebrow">${esc(ui().collection)}</p>
@@ -423,16 +433,16 @@ function menu(message = '', preserveScroll = false) {
           .filter((kind) => current[kind])
           .map(
             (kind) =>
-              `<div class="format ${current[kind] ? '' : 'empty'}"><span>${current[kind] ?? 0}</span><b>${esc(t().kinds[kind])}</b></div>`,
+              `<button class="format" type="button" data-kind-shortcut="${kind}" aria-label="${esc(t().kinds[kind])}: ${esc(t().exercises(current[kind]))}"><span>${current[kind]}</span><b>${esc(t().kinds[kind])}</b></button>`,
           )
           .join('')}
       </div>
     </aside>
     <div class="card setup-card">
       <div class="setup-progress">
-        <span class="${state.setupStep === 1 ? 'active' : ''}"><i>1</i>${esc(t().speak)}</span>
-        <span class="${state.setupStep === 2 ? 'active' : ''}"><i>2</i>${esc(t().learn)}</span>
-        <span class="${state.setupStep === 3 ? 'active' : ''}"><i>3</i>${esc(t().level)}</span>
+        ${stepLabel(1, t().speak)}
+        ${stepLabel(2, t().learn)}
+        ${stepLabel(3, t().level)}
       </div>
       ${state.setupStep > 1 ? `<button class="text-button setup-back" id="back" type="button">← ${esc(ui().back)}</button>` : ''}
       <h1>${esc(state.setupStep === 3 ? exerciseTypeLabels[state.reader].title : ui().titles[state.setupStep - 1])}</h1>
@@ -471,7 +481,9 @@ function menu(message = '', preserveScroll = false) {
             })
             .join('')}</div></fieldset>
       ${unavailable.length ? `<p class="unavailable-levels">${esc(unavailableLevels[state.reader])}: ${unavailable.join(' · ')}</p>` : ''}
-      <details class="settings-disclosure" ${state.settingsOpen ? 'open' : ''}><summary>${esc(ui().details)}</summary><div class="settings-grid"><label>${esc(t().answering)}
+      ${message || !availableLevels.length ? `<p class="warn">${esc(message || t().none)}</p>` : ''}
+      <button class="primary" id="start" ${current.total ? '' : 'disabled'}>${esc(t().start)}</button>
+      <details class="settings-disclosure" ${state.settingsOpen ? 'open' : ''}><summary>${esc(advancedLabels[state.reader].title)}</summary><div class="settings-grid"><label>${esc(t().answering)}
         <select id="mode">
           ${['auto', 'write', 'select']
             .map(
@@ -481,13 +493,11 @@ function menu(message = '', preserveScroll = false) {
             .join('')}
         </select>
       </label>
-      <label>${esc(ui().filter)}
+      <label>${esc(advancedLabels[state.reader].filter)}
         <select id="filter">
-          ${['all','Z','C','T'].map((code, index) => `<option value="${code}" ${state.filter === code ? 'selected' : ''}>${esc(ui().filters[index])}</option>`).join('')}
+          ${['all','Z','C','T'].map((code, index) => `<option value="${code}" ${state.filter === code ? 'selected' : ''}>${esc(code === 'all' ? advancedLabels[state.reader].all : `${code} · ${ui().filters[index]}`)}</option>`).join('')}
         </select>
-      </label></div></details>
-      ${message || !availableLevels.length ? `<p class="warn">${esc(message || t().none)}</p>` : ''}
-      <button class="primary" id="start" ${current.total ? '' : 'disabled'}>${esc(t().start)}</button>` : ''}
+      </label></div></details>` : ''}
     </div>
   </section>`, !preserveScroll);
   app.querySelectorAll('[data-native]').forEach((button) =>
@@ -520,6 +530,14 @@ function menu(message = '', preserveScroll = false) {
   app.querySelectorAll('[data-level]').forEach((button) => button.addEventListener('click', () => {
     state.level = Number(button.dataset.level);
     menu('', true);
+  }));
+  app.querySelectorAll('[data-step]').forEach((button) => button.addEventListener('click', () => {
+    state.setupStep = Number(button.dataset.step);
+    menu();
+  }));
+  app.querySelectorAll('[data-kind-shortcut]').forEach((button) => button.addEventListener('click', () => {
+    state.kind = button.dataset.kindShortcut;
+    menu();
   }));
   on('kind', (event) => {
     state.kind = event.target.value;
@@ -575,13 +593,13 @@ function card() {
   if (variant.kind === 'translation')
     stage += `<p class="word" lang="${tags[variant.sourceLanguage]}">${esc(variant.prompt)}</p>`;
   if (variant.kind === 'cloze')
-    stage += `<p class="sentence" lang="${tags[variant.targetLanguage]}">${esc(variant.cloze?.before ?? '')}${mode === 'write' ? '<input id="field" autocomplete="off" spellcheck="false" />' : '<span class="sentence-blank" aria-hidden="true">…</span>'}${esc(variant.cloze?.after ?? '')}</p>`;
+    stage += `<p class="sentence" lang="${tags[variant.targetLanguage]}">${esc(variant.cloze?.before ?? '')}${mode === 'write' ? `<input id="field" autocomplete="off" spellcheck="false" aria-label="${esc(t().type)}" lang="${tags[variant.targetLanguage]}" />` : '<span class="sentence-blank" aria-hidden="true">…</span>'}${esc(variant.cloze?.after ?? '')}</p>`;
   const answerArea =
     mode === 'select'
       ? `<div class="answers">${optionsFor(variant)
           .map(
             (option) =>
-              `<button type="button" data-option="${esc(option)}" lang="${tags[variant.targetLanguage]}">${esc(option)}</button>`,
+              `<button type="button" data-option="${esc(option)}" aria-pressed="false" lang="${tags[variant.targetLanguage]}">${esc(option)}</button>`,
           )
           .join('')}</div>`
       : variant.kind === 'cloze'
@@ -605,7 +623,7 @@ function card() {
     <div class="stage ${picture ? 'has-visual ' : ''}${esc(variant.kind)}">${stage}</div>
     <form id="answer-form">
       ${answerArea}
-      <div id="feedback" class="hidden"></div>
+      <div id="feedback" class="hidden" role="status" aria-live="polite"></div>
       <div class="actions">
         <button class="primary" id="check" type="submit" disabled>${esc(t().check)}</button>
         <button class="primary hidden" id="next" type="button">${esc(t().next)}</button>
@@ -617,9 +635,10 @@ function card() {
     button.addEventListener('click', () => {
       state.chosen = button.dataset.option;
       app.querySelector('#check').disabled = false;
-      app.querySelectorAll('[data-option]').forEach((other) =>
-        other.classList.toggle('sel', other === button),
-      );
+      app.querySelectorAll('[data-option]').forEach((other) => {
+        other.classList.toggle('sel', other === button);
+        other.setAttribute('aria-pressed', String(other === button));
+      });
     }),
   );
   const field = app.querySelector('#field');
@@ -667,7 +686,9 @@ function check(variant) {
   if (field) field.disabled = true;
   app.querySelector('.progress .bar').style.width = `${((state.index + 1) / state.cards.length) * 100}%`;
   app.querySelector('#check').classList.add('hidden');
-  app.querySelector('#next').classList.remove('hidden');
+  const next = app.querySelector('#next');
+  next.classList.remove('hidden');
+  next.focus({ preventScroll: true });
 }
 
 function advance() {
