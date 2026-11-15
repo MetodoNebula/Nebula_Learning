@@ -257,7 +257,9 @@ const state = {
   target: '1',
   level: 1,
   mode: 'auto',
+  filter: 'all',
   reader: '3',
+  setupStep: 1,
   cards: [],
   index: 0,
   chosen: '',
@@ -325,11 +327,15 @@ function optionsFor(variant) {
 }
 const answerMode = (variant) =>
   variant.kind === 'choice' || state.mode === 'select' ? 'select' : 'write';
+const contentFilter = (variant) =>
+  variant.kind === 'choice' ? 'Z' : variant.kind === 'cloze' ? 'C' : 'T';
+const matchesFilter = (variant) =>
+  state.filter === 'all' || contentFilter(variant) === state.filter;
 
 function levelCounts() {
   const counts = {};
   for (const { variant } of variants) {
-    if (!variant.usable || variant.route !== route()) continue;
+    if (!variant.usable || variant.route !== route() || !matchesFilter(variant)) continue;
     counts[variant.level] ??= { total: 0 };
     counts[variant.level].total += 1;
     counts[variant.level][variant.kind] = (counts[variant.level][variant.kind] ?? 0) + 1;
@@ -376,7 +382,12 @@ function menu(message = '') {
       </div>
     </div>
     <div class="card">
-      <fieldset class="language-picker">
+      <div class="setup-progress">
+        <span class="${state.setupStep === 1 ? 'active' : ''}">1 · ${esc(t().speak)}</span>
+        <span class="${state.setupStep === 2 ? 'active' : ''}">2 · ${esc(t().learn)}</span>
+        <span class="${state.setupStep === 3 ? 'active' : ''}">3 · ${esc(t().level)}</span>
+      </div>
+      ${state.setupStep === 1 ? `<fieldset class="language-picker">
         <legend>${esc(t().speak)}</legend>
         <div class="language-flags">
           ${[1, 2, 3, 4, 5].map((id) => languageButton(id, state.native === String(id), 'data-native')).join('')}
@@ -385,13 +396,15 @@ function menu(message = '') {
             <span>${esc(t().other)}</span>
           </button>
         </div>
-      </fieldset>
-      <fieldset class="language-picker">
+      </fieldset>` : ''}
+      ${state.setupStep === 2 ? `<fieldset class="language-picker">
         <legend>${esc(t().learn)}</legend>
         <div class="language-flags">
           ${[1, 2, 3, 4, 5].map((id) => languageButton(id, state.target === String(id), 'data-target')).join('')}
         </div>
-      </fieldset>
+        <button class="text-button" id="back" type="button">← ${esc(t().menu)}</button>
+      </fieldset>` : ''}
+      ${state.setupStep === 3 ? `<button class="text-button setup-back" id="back" type="button">← ${esc(t().menu)}</button>
       <label>${esc(t().level)}
         <select id="level">
           ${Array.from({ length: 9 }, (_, i) => i + 1)
@@ -412,25 +425,37 @@ function menu(message = '') {
             .join('')}
         </select>
       </label>
+      <label>Filtro de ejercicio
+        <select id="filter">
+          <option value="all" ${state.filter === 'all' ? 'selected' : ''}>Todos los formatos</option>
+          <option value="Z" ${state.filter === 'Z' ? 'selected' : ''}>Z · opción múltiple</option>
+          <option value="C" ${state.filter === 'C' ? 'selected' : ''}>C · completar</option>
+          <option value="T" ${state.filter === 'T' ? 'selected' : ''}>T · traducción y respuesta escrita</option>
+        </select>
+      </label>
       ${message ? `<p class="warn">${esc(message)}</p>` : ''}
-      <button class="primary" id="start" ${current.total ? '' : 'disabled'}>${esc(t().start)}</button>
+      <button class="primary" id="start" ${current.total ? '' : 'disabled'}>${esc(t().start)}</button>` : ''}
     </div>
   </section>`);
   app.querySelectorAll('[data-native]').forEach((button) =>
     button.addEventListener('click', () => {
     state.native = button.dataset.native;
     if (state.native !== 'other') state.reader = state.native;
+    state.setupStep = 2;
     menu();
     }),
   );
   app.querySelectorAll('[data-target]').forEach((button) =>
     button.addEventListener('click', () => {
     state.target = button.dataset.target;
+    state.setupStep = 3;
     menu();
     }),
   );
-  const on = (id, handler) =>
-    app.querySelector('#' + id).addEventListener('change', handler);
+  const on = (id, handler) => {
+    const element = app.querySelector('#' + id);
+    if (element) element.addEventListener('change', handler);
+  };
   on('level', (event) => {
     state.level = Number(event.target.value);
     menu();
@@ -439,14 +464,25 @@ function menu(message = '') {
     state.mode = event.target.value;
     menu();
   });
-  app.querySelector('#start').addEventListener('click', start);
+  on('filter', (event) => {
+    state.filter = event.target.value;
+    menu();
+  });
+  app.querySelector('#back')?.addEventListener('click', () => {
+    state.setupStep = Math.max(1, state.setupStep - 1);
+    menu();
+  });
+  app.querySelector('#start')?.addEventListener('click', start);
 }
 
 function start() {
   state.cards = variants
     .filter(
       ({ variant }) =>
-        variant.usable && variant.route === route() && variant.level === state.level,
+        variant.usable &&
+        variant.route === route() &&
+        variant.level === state.level &&
+        matchesFilter(variant),
     )
     .sort((a, b) => a.variant.code.localeCompare(b.variant.code));
   if (!state.cards.length) return menu(t().none);
@@ -463,8 +499,8 @@ function card() {
   const mode = answerMode(variant);
   const target = names[state.reader][variant.targetLanguage];
   const media = concept.media;
-  const picture = media
-    ? `<img src="${esc(media.path)}" alt="" ${media.width ? `width="${media.width}" height="${media.height}"` : ''} class="${variant.kind === 'naming' || variant.kind === 'choice' ? '' : 'small'}" />`
+  const picture = media?.path
+    ? `<figure class="exercise-visual"><img src="${esc(media.path)}" alt="" loading="eager" decoding="async" ${media.width ? `width="${media.width}" height="${media.height}"` : ''} class="${variant.kind === 'naming' || variant.kind === 'choice' ? '' : 'small'}" /></figure>`
     : '';
   let stage = picture;
   if (variant.kind === 'translation')
@@ -490,18 +526,22 @@ function card() {
         <span class="pill">${esc(variant.code)} · ${esc(variant.route)}</span>
         <h2>${esc(t().prompts[variant.kind](target))}</h2>
       </div>
-      <button class="secondary" id="exit">${esc(t().menu)}</button>
+      <button class="lesson-menu" id="exit" type="button" aria-label="${esc(t().menu)}">
+        <span aria-hidden="true">←</span>${esc(t().menu)}
+      </button>
     </div>
     <div class="progress"><div class="bar" style="width:${(state.index / state.cards.length) * 100}%"></div></div>
     <p class="muted">${state.index + 1} / ${state.cards.length}</p>
     ${variant.hint && variant.kind !== 'cloze' ? `<p class="hint"><b>${esc(t().hint)}</b><span lang="${tags[variant.targetLanguage]}">${esc(variant.hint)}</span></p>` : ''}
-    <div class="stage">${stage}</div>
-    ${answerArea}
-    <div id="feedback" class="hidden"></div>
-    <div class="actions">
-      <button class="primary" id="check">${esc(t().check)}</button>
-      <button class="primary hidden" id="next">${esc(t().next)}</button>
-    </div>
+    <div class="stage ${picture ? 'has-visual ' : ''}${esc(variant.kind)}">${stage}</div>
+    <form id="answer-form">
+      ${answerArea}
+      <div id="feedback" class="hidden"></div>
+      <div class="actions">
+        <button class="primary" id="check" type="submit">${esc(t().check)}</button>
+        <button class="primary hidden" id="next" type="button">${esc(t().next)}</button>
+      </div>
+    </form>
   </section>`);
   app.querySelector('#exit').addEventListener('click', () => menu());
   app.querySelectorAll('[data-option]').forEach((button) =>
@@ -523,7 +563,10 @@ function card() {
       field.focus();
     }),
   );
-  app.querySelector('#check').addEventListener('click', () => check(variant));
+  app.querySelector('#answer-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    check(variant);
+  });
   app.querySelector('#next').addEventListener('click', advance);
 }
 
