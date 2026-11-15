@@ -501,16 +501,19 @@ button:focus-visible {
 }
 .result {
   border-radius: 10px;
-  padding: 12px 14px;
-  margin-top: 14px;
+  padding: 8px 12px;
+  margin-top: 8px;
   border: 1px solid var(--line);
   background: #1c241e;
 }
+.result p { margin: 4px 0 0; font-size: .9rem; }
 .result.good {
   border-color: #6f9c4a;
+  background: #1d2b1e;
 }
 .result.bad {
   border-color: #8a5b4f;
+  background: #30211f;
 }
 .review {
   display: grid;
@@ -675,6 +678,8 @@ button:focus-visible {
   .grid > .card { grid-column: 1; grid-row: 1; }
   .grid > .content-summary { grid-column: 1; grid-row: 2; }
   .content-summary .formats { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .grid > .content-summary { display: none !important; }
+  .shell { padding-bottom: 20px; }
 }
 @media (max-width: 600px) {
   .shell { width: calc(100% - 28px); padding-top: 16px; }
@@ -773,4 +778,58 @@ button:focus-visible {
   .step-2 .language-flags { gap: 7px; }
   .step-2 .language-flag { min-height: 78px; padding: 4px; }
   .step-2 .language-flag img { width: 50px; height: 35px; }
+}
+@media (min-width: 601px) {
+  .grid.step-3 { padding: 24px 0; }
+  .grid.step-3 > .card { padding: 26px 28px; }
+  .grid.step-3 > .content-summary { display: block; }
+  .step-3 .setup-progress { margin-bottom: 18px; }
+  .step-3 .setup-back { float: right; min-height: 38px; margin: -2px 0 0 14px; }
+  .step-3 .setup-card h1 { font-size: clamp(1.8rem, 2.4vw, 2.2rem); margin-bottom: 4px; }
+  .step-3 .setup-subtitle { margin-bottom: 14px; }
+  .step-3 .route-summary { margin: 0 0 14px; }
+  .step-3 .type-picker { margin-bottom: 14px; }
+  .step-3 .level-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .step-3 .level-option { min-height: 60px; padding: 8px 10px; }
+  .step-3 .unavailable-levels { margin-top: 8px; }
+  .step-3 #start { margin-top: 12px; }
+  .step-3 .settings-disclosure { margin-top: 12px; }
+}
+@media (min-width: 601px) and (max-height: 800px) {
+  .lesson { margin: 18px auto; padding: 18px; }
+  .progress { margin: 10px 0 8px; }
+  .stage { margin: 10px 0; padding: 12px; }
+  .stage.has-visual { min-height: 0; }
+  .stage img { max-height: min(30vh, 240px); }
+  .stage.translation.has-visual { min-height: 160px; }
+  .stage.translation.has-visual img.small { max-height: 130px; max-width: 130px; }
+  .accents { flex-wrap: nowrap; gap: 4px; }
+  .accents button { flex: 0 0 clamp(34px, 5.7vw, 40px); min-width: 0; }
+  .answers button { min-height: 56px; padding: 10px; }
+  .actions { margin-top: 12px; }
+  .lesson.answered { padding-bottom: 10px; }
+  .lesson.answered .actions { margin-top: 8px; }
+}
+@media (min-width: 601px) and (max-width: 760px) {
+  .answers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stage.translation.has-visual { grid-template-columns: 150px minmax(0, 1fr); text-align: left; }
+  .stage.translation.has-visual { min-height: 140px; }
+  .stage.translation.has-visual img.small { max-height: 115px; max-width: 115px; }
+  .stage.cloze.has-visual { grid-template-columns: 160px minmax(0, 1fr); text-align: left; }
+}
+@media (min-width: 601px) and (max-width: 680px) {
+  .step-3 .level-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .step-3 .level-option { min-height: 50px; }
+}
+@media (min-width: 351px) and (max-width: 600px) {
+  .step-3 .level-grid:has(.level-option:nth-child(5)) { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
+  .step-3 .level-grid:has(.level-option:nth-child(5)) .level-option { flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px; min-height: 68px; padding: 7px 6px; }
+  .step-3 .level-grid:has(.level-option:nth-child(5)) .level-option strong { font-size: 1.25rem; }
+  .step-3 .level-grid:has(.level-option:nth-child(5)) .level-option small { font-size: .68rem; }
+  .stage.translation.has-visual { grid-template-columns: 110px minmax(0, 1fr); min-height: 140px; text-align: left; }
+  .stage.translation.has-visual .exercise-visual { width: 110px; }
+  .stage.translation.has-visual img.small { max-width: 110px; max-height: 110px; }
+  .stage.translation .word { font-size: clamp(1.8rem, 8vw, 2.2rem); }
+  .accents { gap: 4px; }
+  .accents button { flex: 0 0 clamp(34px, 9vw, 38px); min-width: 0; }
 }
