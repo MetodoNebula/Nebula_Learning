@@ -78,7 +78,8 @@ const staticDatabase = {
     level: concept.level,
     media: picture(concept),
     variants: concept.variants
-      .filter((variant) => variant.usable)
+      // A choice card without a picture or prompt has no question to answer.
+      .filter((variant) => variant.usable && (variant.kind !== 'choice' || picture(concept)))
       .map((variant) => ({
         id: variant.id,
         code: variant.code,
