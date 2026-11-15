@@ -352,7 +352,8 @@ function levelCounts() {
   return counts;
 }
 
-function shell(content) {
+function shell(content, scrollToTop = true) {
+  const previousScrollY = window.scrollY;
   app.innerHTML = `<div class="shell">
     <header class="top">
       <div class="brand"><span class="mark">N</span><span>Nebula <em>Tech</em></span></div>
@@ -360,10 +361,10 @@ function shell(content) {
     </header>
     ${content}
   </div>`;
-  window.scrollTo(0, 0);
+  window.scrollTo(0, scrollToTop ? 0 : previousScrollY);
 }
 
-function menu(message = '') {
+function menu(message = '', preserveScroll = false) {
   const counts = levelCounts();
   if (!counts[state.level]) {
     const first = Object.keys(counts).sort((a, b) => a - b)[0];
@@ -438,7 +439,7 @@ function menu(message = '') {
       ${message ? `<p class="warn">${esc(message)}</p>` : ''}
       <button class="primary" id="start" ${current.total ? '' : 'disabled'}>${esc(t().start)}</button>` : ''}
     </div>
-  </section>`);
+  </section>`, !preserveScroll);
   app.querySelectorAll('[data-native]').forEach((button) =>
     button.addEventListener('click', () => {
     state.native = button.dataset.native;
@@ -460,15 +461,15 @@ function menu(message = '') {
   };
   app.querySelectorAll('[data-level]').forEach((button) => button.addEventListener('click', () => {
     state.level = Number(button.dataset.level);
-    menu();
+    menu('', true);
   }));
   on('mode', (event) => {
     state.mode = event.target.value;
-    menu();
+    menu('', true);
   });
   on('filter', (event) => {
     state.filter = event.target.value;
-    menu();
+    menu('', true);
   });
   app.querySelector('#back')?.addEventListener('click', () => {
     state.setupStep = Math.max(1, state.setupStep - 1);
