@@ -47,7 +47,7 @@ const T = {
     level: 'Level',
     answering: 'Answering',
     modes: { auto: 'As authored', write: 'Always type', select: 'Always choose' },
-    exercises: (n) => `${n} exercises`,
+    exercises: (n) => `${n} ${n === 1 ? 'exercise' : 'exercises'}`,
     empty: 'no content',
     start: 'Start',
     none: 'This level has no content for that route yet.',
@@ -90,7 +90,7 @@ const T = {
       write: 'Toujours écrire',
       select: 'Toujours choisir',
     },
-    exercises: (n) => `${n} exercices`,
+    exercises: (n) => `${n} exercice${n === 1 ? '' : 's'}`,
     empty: 'sans contenu',
     start: 'Commencer',
     none: "Ce niveau n'a pas encore de contenu pour ce parcours.",
@@ -133,7 +133,7 @@ const T = {
       write: 'Siempre escribir',
       select: 'Siempre elegir',
     },
-    exercises: (n) => `${n} ejercicios`,
+    exercises: (n) => `${n} ejercicio${n === 1 ? '' : 's'}`,
     empty: 'sin contenido',
     start: 'Empezar',
     none: 'Ese nivel todavía no tiene contenido para esta ruta.',
@@ -176,7 +176,7 @@ const T = {
       write: 'Sempre scrivere',
       select: 'Sempre scegliere',
     },
-    exercises: (n) => `${n} esercizi`,
+    exercises: (n) => `${n} esercizi${n === 1 ? 'o' : ''}`,
     empty: 'senza contenuti',
     start: 'Inizia',
     none: 'Questo livello non ha ancora contenuti per questo percorso.',
@@ -219,7 +219,7 @@ const T = {
       write: 'Immer schreiben',
       select: 'Immer auswählen',
     },
-    exercises: (n) => `${n} Übungen`,
+    exercises: (n) => `${n} ${n === 1 ? 'Übung' : 'Übungen'}`,
     empty: 'ohne Inhalt',
     start: 'Starten',
     none: 'Diese Stufe hat für diese Route noch keinen Inhalt.',
@@ -259,6 +259,20 @@ const UI = {
   4: { titles: ['Che lingua parli?', 'Quale lingua vuoi imparare?', 'Scegli il livello'], subtitles: ['Scegli la lingua di partenza.', 'Mostreremo gli esercizi nella lingua scelta.', 'Scegli un livello disponibile e inizia.'], back: 'Indietro', details: 'Impostazioni', filter: 'Filtro esercizi', filters: ['Tutti i formati', 'Scelta multipla', 'Completa la frase', 'Traduzione e scrittura'], collection: 'In questo livello', other: 'Altra lingua', otherHint: 'Impara con le immagini' },
   5: { titles: ['Welche Sprache sprichst du?', 'Welche Sprache möchtest du lernen?', 'Wähle deine Stufe'], subtitles: ['Wähle deine Ausgangssprache.', 'Wir zeigen Übungen in deiner Zielsprache.', 'Wähle eine verfügbare Stufe und beginne.'], back: 'Zurück', details: 'Einstellungen', filter: 'Übungsfilter', filters: ['Alle Formate', 'Auswahl', 'Satz ergänzen', 'Übersetzen und schreiben'], collection: 'In dieser Stufe', other: 'Andere Sprache', otherHint: 'Mit Bildern lernen' },
 };
+const unavailableLevels = {
+  1: 'No content yet at levels',
+  2: 'Pas encore de contenu aux niveaux',
+  3: 'Aún sin contenido en los niveles',
+  4: 'Ancora senza contenuti ai livelli',
+  5: 'Noch keine Inhalte auf den Stufen',
+};
+const labNames = {
+  1: 'Language Lab',
+  2: 'Atelier des langues',
+  3: 'Laboratorio de idiomas',
+  4: 'Laboratorio linguistico',
+  5: 'Sprachlabor',
+};
 
 const state = {
   native: '',
@@ -266,6 +280,7 @@ const state = {
   level: 1,
   mode: 'auto',
   filter: 'all',
+  settingsOpen: false,
   reader: '3',
   setupStep: 1,
   cards: [],
@@ -357,7 +372,7 @@ function shell(content, scrollToTop = true) {
   app.innerHTML = `<div class="shell">
     <header class="top">
       <div class="brand"><span class="mark">N</span><span>Nebula <em>Tech</em></span></div>
-      <span class="top-label">Language Lab</span>
+      <span class="top-label">${esc(labNames[state.reader])}</span>
     </header>
     ${content}
   </div>`;
@@ -366,6 +381,8 @@ function shell(content, scrollToTop = true) {
 
 function menu(message = '', preserveScroll = false) {
   const counts = levelCounts();
+  const availableLevels = Array.from({ length: 9 }, (_, i) => i + 1).filter((level) => counts[level]?.total);
+  const unavailable = Array.from({ length: 9 }, (_, i) => i + 1).filter((level) => !counts[level]?.total);
   if (!counts[state.level]) {
     const first = Object.keys(counts).sort((a, b) => a - b)[0];
     if (first) state.level = Number(first);
@@ -382,6 +399,7 @@ function menu(message = '', preserveScroll = false) {
       <h2>${esc(t().level)} ${state.level} <span class="summary-count">${esc(t().exercises(current.total))}</span></h2>
       <div class="formats">
         ${['naming', 'translation', 'choice', 'cloze']
+          .filter((kind) => current[kind])
           .map(
             (kind) =>
               `<div class="format ${current[kind] ? '' : 'empty'}"><span>${current[kind] ?? 0}</span><b>${esc(t().kinds[kind])}</b></div>`,
@@ -398,6 +416,7 @@ function menu(message = '', preserveScroll = false) {
       ${state.setupStep > 1 ? `<button class="text-button setup-back" id="back" type="button">← ${esc(ui().back)}</button>` : ''}
       <h1>${esc(ui().titles[state.setupStep - 1])}</h1>
       <p class="setup-subtitle">${esc(ui().subtitles[state.setupStep - 1])}</p>
+      ${state.setupStep === 3 ? `<p class="route-summary"><span>${esc(state.native === 'other' ? ui().other : endonyms[state.native])}</span><span aria-hidden="true">→</span><strong>${esc(endonyms[state.target])}</strong></p>` : ''}
       ${state.setupStep === 1 ? `<fieldset class="language-picker">
         <legend class="sr-only">${esc(t().speak)}</legend>
         <div class="language-flags">
@@ -415,13 +434,14 @@ function menu(message = '', preserveScroll = false) {
         </div>
       </fieldset>` : ''}
       ${state.setupStep === 3 ? `<fieldset class="level-picker"><legend class="sr-only">${esc(t().level)}</legend><div class="level-grid">
-          ${Array.from({ length: 9 }, (_, i) => i + 1)
+          ${availableLevels
             .map((level) => {
-              const total = counts[level]?.total ?? 0;
-              return `<button type="button" class="level-option" data-level="${level}" aria-pressed="${state.level === level}" ${total ? '' : 'disabled'}><strong>${level}</strong><small>${total ? esc(t().exercises(total)) : esc(t().empty)}</small></button>`;
+              const total = counts[level].total;
+              return `<button type="button" class="level-option" data-level="${level}" aria-pressed="${state.level === level}"><strong>${level}</strong><small>${esc(t().exercises(total))}</small></button>`;
             })
             .join('')}</div></fieldset>
-      <div class="settings-title">${esc(ui().details)}</div><div class="settings-grid"><label>${esc(t().answering)}
+      ${unavailable.length ? `<p class="unavailable-levels">${esc(unavailableLevels[state.reader])}: ${unavailable.join(' · ')}</p>` : ''}
+      <details class="settings-disclosure" ${state.settingsOpen ? 'open' : ''}><summary>${esc(ui().details)}</summary><div class="settings-grid"><label>${esc(t().answering)}
         <select id="mode">
           ${['auto', 'write', 'select']
             .map(
@@ -435,8 +455,8 @@ function menu(message = '', preserveScroll = false) {
         <select id="filter">
           ${['all','Z','C','T'].map((code, index) => `<option value="${code}" ${state.filter === code ? 'selected' : ''}>${esc(ui().filters[index])}</option>`).join('')}
         </select>
-      </label></div>
-      ${message ? `<p class="warn">${esc(message)}</p>` : ''}
+      </label></div></details>
+      ${message || !availableLevels.length ? `<p class="warn">${esc(message || t().none)}</p>` : ''}
       <button class="primary" id="start" ${current.total ? '' : 'disabled'}>${esc(t().start)}</button>` : ''}
     </div>
   </section>`, !preserveScroll);
@@ -470,6 +490,9 @@ function menu(message = '', preserveScroll = false) {
   on('filter', (event) => {
     state.filter = event.target.value;
     menu('', true);
+  });
+  app.querySelector('.settings-disclosure')?.addEventListener('toggle', (event) => {
+    state.settingsOpen = event.target.open;
   });
   app.querySelector('#back')?.addEventListener('click', () => {
     state.setupStep = Math.max(1, state.setupStep - 1);
@@ -508,8 +531,8 @@ function card() {
   let stage = picture;
   if (variant.kind === 'translation')
     stage += `<p class="word" lang="${tags[variant.sourceLanguage]}">${esc(variant.prompt)}</p>`;
-  if (variant.kind === 'cloze' && mode === 'write')
-    stage += `<p class="sentence" lang="${tags[variant.targetLanguage]}">${esc(variant.cloze?.before ?? '')}<input id="field" autocomplete="off" spellcheck="false" />${esc(variant.cloze?.after ?? '')}</p>`;
+  if (variant.kind === 'cloze')
+    stage += `<p class="sentence" lang="${tags[variant.targetLanguage]}">${esc(variant.cloze?.before ?? '')}${mode === 'write' ? '<input id="field" autocomplete="off" spellcheck="false" />' : '<span class="sentence-blank" aria-hidden="true">…</span>'}${esc(variant.cloze?.after ?? '')}</p>`;
   const answerArea =
     mode === 'select'
       ? `<div class="answers">${optionsFor(variant)
@@ -541,7 +564,7 @@ function card() {
       ${answerArea}
       <div id="feedback" class="hidden"></div>
       <div class="actions">
-        <button class="primary" id="check" type="submit">${esc(t().check)}</button>
+        <button class="primary" id="check" type="submit" disabled>${esc(t().check)}</button>
         <button class="primary hidden" id="next" type="button">${esc(t().next)}</button>
       </div>
     </form>
@@ -550,6 +573,7 @@ function card() {
   app.querySelectorAll('[data-option]').forEach((button) =>
     button.addEventListener('click', () => {
       state.chosen = button.dataset.option;
+      app.querySelector('#check').disabled = false;
       app.querySelectorAll('[data-option]').forEach((other) =>
         other.classList.toggle('sel', other === button),
       );
@@ -558,11 +582,13 @@ function card() {
   const field = app.querySelector('#field');
   field?.addEventListener('input', () => {
     state.chosen = field.value;
+    app.querySelector('#check').disabled = !state.chosen.trim();
   });
   app.querySelectorAll('[data-char]').forEach((button) =>
     button.addEventListener('click', () => {
       field.value += button.dataset.char;
       state.chosen = field.value;
+      app.querySelector('#check').disabled = !state.chosen.trim();
       field.focus();
     }),
   );
@@ -596,6 +622,7 @@ function check(variant) {
   });
   const field = app.querySelector('#field');
   if (field) field.disabled = true;
+  app.querySelector('.progress .bar').style.width = `${((state.index + 1) / state.cards.length) * 100}%`;
   app.querySelector('#check').classList.add('hidden');
   app.querySelector('#next').classList.remove('hidden');
 }
@@ -612,19 +639,18 @@ function results() {
   shell(`<section class="lesson">
     <span class="pill">${esc(t().level)} ${state.level}</span>
     <h1>${esc(t().score(state.score, state.cards.length))}</h1>
-    <h2>${esc(t().review)}</h2>
-    <div class="review">
+    <div class="actions result-actions">
+      <button class="secondary" id="menu">${esc(t().menu)}</button>
+      <button class="primary" id="again">${esc(t().again)}</button>
+    </div>
+    <details class="review-details"><summary>${esc(t().review)}</summary><div class="review">
       ${state.log
         .map(
           (entry) =>
             `<div><strong lang="${tags[entry.variant.targetLanguage]}">${esc(entry.variant.prompt ? entry.variant.prompt + ' → ' + entry.variant.primaryAnswer : entry.variant.primaryAnswer)}</strong>${entry.correct ? '' : `<p class="muted">${esc(entry.value)}</p>`}</div>`,
         )
         .join('')}
-    </div>
-    <div class="actions">
-      <button class="secondary" id="menu">${esc(t().menu)}</button>
-      <button class="primary" id="again">${esc(t().again)}</button>
-    </div>
+    </div></details>
   </section>`);
   app.querySelector('#menu').addEventListener('click', () => menu());
   app.querySelector('#again').addEventListener('click', start);
