@@ -664,6 +664,7 @@ function card() {
 function check(variant) {
   if (state.checked || !state.chosen.trim()) return;
   state.checked = true;
+  app.querySelector('.lesson').classList.add('answered');
   const result = quality(state.chosen, variant.answers);
   if (result !== 'none') state.score += 1;
   state.log.push({
