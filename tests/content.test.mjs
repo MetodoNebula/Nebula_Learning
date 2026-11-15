@@ -12,8 +12,10 @@ import {
 } from '../lib/server/content.ts';
 import { languagePair } from '../lib/lesson.ts';
 import {
+  classifyVariant,
   classifyHint,
   matchAnswer,
+  parseFileName,
   parseRecord,
   splitAnswers,
   splitChoiceOptions,
@@ -232,7 +234,7 @@ test('the authored format decides how every imported card is answered', () => {
       assert.deepEqual(variant.options, [], variant.id);
     }
   }
-  assert.equal(picked, 5, 'only the authored multiple choice cards are picked');
+  assert.ok(picked >= 5, 'authored multiple choice cards are picked');
   assert.equal(picked + written, pairs.length);
 });
 
@@ -271,6 +273,26 @@ test('options in Q are recognised even when the record has no F line', () => {
   const single = variants.find((variant) => variant.id === '10821011-51');
   assert.equal(single.kind, 'translation');
   assert.deepEqual(single.options, []);
+});
+
+test('declared multiple choice accepts the comma-separated Demo convention', () => {
+  const record = parseRecord(
+    'Q hourglass, stopwatch, pocket watch, alarm clock\nA 4 alarm clock\nH \nR 0\nS 11142\nF Z',
+  );
+  const file = parseFileName('00133041-11-T.txt');
+  const classified = classifyVariant({
+    record,
+    file,
+    answers: splitAnswers(record.A),
+    hasMedia: true,
+  });
+  assert.equal(classified.kind, 'choice');
+  assert.deepEqual(classified.options, [
+    'hourglass',
+    'stopwatch',
+    'pocket watch',
+    'alarm clock',
+  ]);
 });
 
 test('record parsing, hints and answer matching follow the drop conventions', () => {

@@ -1,11 +1,13 @@
 import type {
   AnswerMode,
+  ContentFilter,
   LanguageId,
   LearningProfile,
   NativeLanguageId,
 } from '../lesson.ts';
 
 const answerModes: AnswerMode[] = ['auto', 'write', 'select', 'mixed'];
+const filters: ContentFilter[] = ['all', 'Z', 'C', 'T'];
 
 /** Reads and validates the learning route from the query string. */
 export function readProfile(
@@ -16,10 +18,12 @@ export function readProfile(
   const nativeLanguage = params.get('nativeLanguage');
   const targetLanguage = params.get('targetLanguage');
   const answerMode = params.get('answerMode') ?? 'auto';
+  const filter = params.get('filter') ?? 'all';
   if (nativeLanguage !== 'other' && !/^[1-5]$/.test(nativeLanguage ?? ''))
     return null;
   if (!/^[1-5]$/.test(targetLanguage ?? '')) return null;
   if (!answerModes.includes(answerMode as AnswerMode)) return null;
+  if (!filters.includes(filter as ContentFilter)) return null;
   const level = Number(params.get('level'));
   if (requireLevel && !(Number.isInteger(level) && level >= 1 && level <= 9))
     return null;
@@ -28,6 +32,7 @@ export function readProfile(
     targetLanguage: targetLanguage as LanguageId,
     level: requireLevel ? level : 1,
     answerMode: answerMode as AnswerMode,
+    filter: filter as ContentFilter,
   };
 }
 

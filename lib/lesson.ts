@@ -18,6 +18,8 @@ export type QuestionType =
   | 'order';
 /** How the learner answers: free text, or pick one of the shown options. */
 export type AnswerMode = 'auto' | 'write' | 'select' | 'mixed';
+/** Editorial filter carried by F in new drops; legacy T/U records map to A. */
+export type ContentFilter = 'all' | 'Z' | 'C' | 'T';
 export type Question = {
   id: string;
   type: QuestionType;
@@ -90,6 +92,7 @@ export type LearningProfile = {
   targetLanguage: LanguageId;
   level: number;
   answerMode?: AnswerMode;
+  filter?: ContentFilter;
 };
 /** Endonyms, so every learner recognises their own language in the picker. */
 export const languages: Record<
@@ -110,6 +113,7 @@ export const defaultLearningProfile: LearningProfile = {
   targetLanguage: '1',
   level: 1,
   answerMode: 'auto',
+  filter: 'all',
 };
 export function languagePair(profile: LearningProfile) {
   const source =
@@ -119,7 +123,7 @@ export function languagePair(profile: LearningProfile) {
   return `${source}${profile.targetLanguage}` as const;
 }
 export function profileKey(profile: LearningProfile) {
-  return `pair-${languagePair(profile)}-level-${profile.level}`;
+  return `pair-${languagePair(profile)}-level-${profile.level}-filter-${profile.filter ?? 'all'}`;
 }
 export function profileTitle(profile: LearningProfile) {
   const target = languages[profile.targetLanguage].name;

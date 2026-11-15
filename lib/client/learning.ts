@@ -150,6 +150,7 @@ function profileQuery(profile: LearningProfile) {
     targetLanguage: profile.targetLanguage,
     level: String(profile.level),
     answerMode: profile.answerMode ?? 'auto',
+    filter: profile.filter ?? 'all',
   });
   return params.toString();
 }

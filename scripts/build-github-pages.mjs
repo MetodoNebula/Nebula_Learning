@@ -16,8 +16,28 @@ const database = JSON.parse(
 const manifest = JSON.parse(
   await readFile(resolve('data/media-manifest.json'), 'utf8'),
 ).files;
+const normalized = (value) =>
+  String(value)
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLocaleLowerCase('en')
+    .trim();
+const safeHint = (variant) => {
+  const hint = variant.hint?.trim() ?? '';
+  const leaksAnswer = variant.answers.some((answer) => {
+    const clean = normalized(answer);
+    return clean.length > 1 && normalized(hint).includes(clean);
+  });
+  return leaksAnswer ? '' : hint;
+};
 
-await rm(output, { recursive: true, force: true });
+// The local static preview may still have an asset open while rebuilding.
+await rm(output, {
+  recursive: true,
+  force: true,
+  maxRetries: 5,
+  retryDelay: 200,
+});
 await mkdir(join(output, 'data'), { recursive: true });
 await mkdir(join(output, 'media'), { recursive: true });
 await cp(resolve('public/assets/flags'), join(output, 'assets', 'flags'), {
@@ -69,7 +89,7 @@ const staticDatabase = {
         kind: variant.kind,
         prompt: variant.prompt,
         options: variant.options,
-        hint: variant.hint,
+        hint: safeHint(variant),
         hintKind: variant.hintKind,
         cloze: variant.cloze,
         answers: variant.answers,

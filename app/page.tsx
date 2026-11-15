@@ -36,6 +36,7 @@ import {
   profileKey,
   type Answer,
   type AnswerMode,
+  type ContentFilter,
   type LearningProfile,
   type QuestionType,
 } from '@/lib/lesson';
@@ -44,6 +45,12 @@ import type { Exercise, Feedback, LevelAvailability } from '@/lib/contracts';
 import { createLearningClient } from '@/lib/client/learning';
 
 const answerModes: AnswerMode[] = ['auto', 'write', 'select', 'mixed'];
+const contentFilters: { id: ContentFilter; label: string }[] = [
+  { id: 'all', label: 'Todos los formatos' },
+  { id: 'Z', label: 'Z · opción múltiple' },
+  { id: 'C', label: 'C · completar' },
+  { id: 'T', label: 'T · traducción y respuesta escrita' },
+];
 const kindIcon: Record<string, typeof ImageIcon> = {
   naming: ImageIcon,
   translation: Languages,
@@ -113,6 +120,7 @@ export default function Home() {
   const [levels, setLevels] = useState<LevelAvailability[]>([]);
   const [availabilityError, setAvailabilityError] = useState('');
   const [improved, setImproved] = useState(false);
+  const [setupStep, setSetupStep] = useState<1 | 2 | 3>(1);
 
   // The interface follows the language the learner speaks. "Another language"
   // says nothing about what they read, so the last real choice is kept.
@@ -152,11 +160,11 @@ export default function Home() {
 
   // Only the language pair changes which levels exist, so the level and the
   // answering mode deliberately stay out of the dependency list.
-  const { nativeLanguage, targetLanguage } = profile;
+  const { nativeLanguage, targetLanguage, filter } = profile;
   useEffect(() => {
     let active = true;
     learning
-      .availability({ nativeLanguage, targetLanguage, level: 1 })
+      .availability({ nativeLanguage, targetLanguage, level: 1, filter })
       .then((data) => {
         if (!active) return;
         setAvailabilityError('');
@@ -177,7 +185,7 @@ export default function Home() {
     return () => {
       active = false;
     };
-  }, [learning, nativeLanguage, targetLanguage, t]);
+  }, [learning, nativeLanguage, targetLanguage, filter, t]);
 
   useEffect(() => {
     title.current?.focus();
@@ -329,6 +337,19 @@ export default function Home() {
     }
   }
 
+  function submitAnswerWithEnter(event: React.KeyboardEvent<HTMLFormElement>) {
+    if (
+      event.key !== 'Enter' ||
+      checked ||
+      checkingRef.current ||
+      checking ||
+      !selected.trim()
+    )
+      return;
+    event.preventDefault();
+    event.currentTarget.requestSubmit();
+  }
+
   function editAnswer() {
     if (checkingRef.current) return;
     setFeedbackOpen(false);
@@ -377,6 +398,16 @@ export default function Home() {
       return updated;
     });
     setLoadError('');
+  }
+
+  function chooseNativeLanguage(nativeLanguage: LearningProfile['nativeLanguage']) {
+    updateProfile({ nativeLanguage });
+    setSetupStep(2);
+  }
+
+  function chooseTargetLanguage(targetLanguage: LearningProfile['targetLanguage']) {
+    updateProfile({ targetLanguage });
+    setSetupStep(3);
   }
 
   function insertCharacter(character: string) {
@@ -595,7 +626,12 @@ export default function Home() {
               </span>
             </div>
             <div className="profile-config">
-              <fieldset className="language-picker">
+              <div className="setup-progress" aria-label="Configuración">
+                <span className={setupStep === 1 ? 'active' : ''}>1 · {t.youSpeak}</span>
+                <span className={setupStep === 2 ? 'active' : ''}>2 · {t.youLearn}</span>
+                <span className={setupStep === 3 ? 'active' : ''}>3 · {t.levelLabel}</span>
+              </div>
+              {setupStep === 1 && <fieldset className="language-picker">
                 <legend>{t.youSpeak}</legend>
                 <div className="language-flags">
                   {languageOptions.map((language) => (
@@ -604,9 +640,7 @@ export default function Home() {
                       type="button"
                       className="language-flag"
                       aria-pressed={profile.nativeLanguage === language.id}
-                      onClick={() =>
-                        updateProfile({ nativeLanguage: language.id })
-                      }
+                      onClick={() => chooseNativeLanguage(language.id)}
                     >
                       <Image
                         className="language-flag-symbol"
@@ -622,14 +656,14 @@ export default function Home() {
                     type="button"
                     className="language-flag other-language"
                     aria-pressed={profile.nativeLanguage === 'other'}
-                    onClick={() => updateProfile({ nativeLanguage: 'other' })}
+                    onClick={() => chooseNativeLanguage('other')}
                   >
                     <Orbit size={25} aria-hidden="true" />
                     <span>{t.otherLanguage}</span>
                   </button>
                 </div>
-              </fieldset>
-              <fieldset className="language-picker">
+              </fieldset>}
+              {setupStep === 2 && <fieldset className="language-picker">
                 <legend>{t.youLearn}</legend>
                 <div className="language-flags">
                   {languageOptions.map((language) => (
@@ -638,9 +672,7 @@ export default function Home() {
                       type="button"
                       className="language-flag"
                       aria-pressed={profile.targetLanguage === language.id}
-                      onClick={() =>
-                        updateProfile({ targetLanguage: language.id })
-                      }
+                      onClick={() => chooseTargetLanguage(language.id)}
                     >
                       <Image
                         className="language-flag-symbol"
@@ -653,7 +685,14 @@ export default function Home() {
                     </button>
                   ))}
                 </div>
-              </fieldset>
+                <button type="button" className="text-button" onClick={() => setSetupStep(1)}>
+                  <ArrowLeft size={16} /> {t.backToMenu}
+                </button>
+              </fieldset>}
+              {setupStep === 3 && <>
+              <button type="button" className="text-button setup-back" onClick={() => setSetupStep(2)}>
+                <ArrowLeft size={16} /> {t.backToMenu}
+              </button>
               <label>
                 {t.levelLabel}
                 <select
@@ -696,6 +735,21 @@ export default function Home() {
                   ))}
                 </select>
               </label>
+              <label>
+                Filtro de ejercicio
+                <select
+                  value={profile.filter ?? 'all'}
+                  onChange={(event) =>
+                    updateProfile({ filter: event.target.value as ContentFilter })
+                  }
+                >
+                  {contentFilters.map((filter) => (
+                    <option key={filter.id} value={filter.id}>
+                      {filter.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <div className="route-summary">
                 <span className="level-badge">{t.routeBadge(route)}</span>
                 <p>{t.answerModeHelp[profile.answerMode ?? 'auto']}</p>
@@ -708,6 +762,7 @@ export default function Home() {
                 {loading ? t.loadingLabel : t.start}
                 <ArrowRight size={19} />
               </button>
+              </>}
             </div>
             {(loadError || availabilityError || !hasSelectedContent) && (
               <p role="alert" className="availability-note">
@@ -974,7 +1029,7 @@ export default function Home() {
                     targetName,
                   )}
             </p>
-            <form onSubmit={checkAnswer}>
+            <form onSubmit={checkAnswer} onKeyDown={submitAnswerWithEnter}>
               <div className="exercise-content">
                 {renderStage()}
                 {q.hint && q.type !== 'cloze' && (

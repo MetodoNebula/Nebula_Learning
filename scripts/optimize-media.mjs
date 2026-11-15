@@ -33,7 +33,14 @@ const trimming = !flag('--no-trim');
 const trimThreshold = 12;
 const minimumKeptArea = 0.25;
 
-await rm(output, { recursive: true, force: true });
+// The local preview can still be reading a previous picture when a new import
+// starts. Windows rejects that first removal, so let Node retry briefly.
+await rm(output, {
+  recursive: true,
+  force: true,
+  maxRetries: 5,
+  retryDelay: 200,
+});
 await mkdir(output, { recursive: true });
 
 const manifest = {};

@@ -163,16 +163,17 @@ export function splitAnswers(value: string) {
 }
 
 /**
- * Multiple choice prompts should use semicolons. Older files pack four options
- * into one or two lines, separated by runs of spaces and optionally numbered
- * ("1 oeil") or lettered ("a) ojo").
+ * Multiple choice prompts normally use semicolons. The Demo drop also has
+ * authored Z records with four comma-separated options. Older files pack four
+ * options into one or two lines, separated by runs of spaces and optionally
+ * numbered ("1 oeil") or lettered ("a) ojo").
  */
 const optionMarker = /(?:^|\s)(?:[1-9](?:[).:-]\s*|\s+)|[a-e][).:-]\s*)/g;
 const markedOption = /^\s*(?:[1-9]\s*[).:-]?|[a-e]\s*[).:-])\s+/;
 /** "A 1 eye": the answer line itself numbers the option it points at. */
 const indexedAnswer = /^\s*[1-9]\s*[).:-]?\s+\S/;
 
-export function splitChoiceOptions(question: string) {
+export function splitChoiceOptions(question: string, allowCommas = false) {
   const flat = question.replace(/\r?\n/g, '  ').trim();
   if (!flat) return [];
   const semicolonOptions = flat
@@ -180,6 +181,15 @@ export function splitChoiceOptions(question: string) {
     .map((option) => stripOptionMarker(option).trim())
     .filter(Boolean);
   if (semicolonOptions.length >= 3) return semicolonOptions;
+  // A comma is ambiguous in normal text, so it is accepted only for records
+  // already declared as multiple choice (F Z).
+  if (allowCommas) {
+    const commaOptions = flat
+      .split(',')
+      .map((option) => stripOptionMarker(option).trim())
+      .filter(Boolean);
+    if (commaOptions.length >= 3) return commaOptions;
+  }
   // "1 oeil  2 bouche" and "a) ojo  b) boca" are split on their own markers,
   // because the drop is not consistent about how much space follows them.
   if (markedOption.test(flat)) {
@@ -276,7 +286,7 @@ export function classifyVariant({
   };
   const hintKind = classifyHint(record.H);
   const question = record.Q.trim();
-  const cells = splitChoiceOptions(question);
+  const cells = splitChoiceOptions(question, record.F === 'Z');
   const looksLikeChoice =
     record.F === 'Z' ||
     ((markedOption.test(question) || question.includes('\n')) &&

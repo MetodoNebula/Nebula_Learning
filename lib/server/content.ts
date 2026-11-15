@@ -8,6 +8,7 @@ import {
   decodeCode,
   matchAnswer,
   mediaFilePattern,
+  normalizeAnswerText,
   parseFileName,
   parseMediaFileName,
   parseRecord,
@@ -201,7 +202,9 @@ export function buildContentDatabase(
     const usable =
       answers.length > 0 &&
       (classified.kind !== 'naming' || Boolean(picture)) &&
-      (classified.kind !== 'choice' || classified.options.length >= 2);
+      (classified.kind !== 'choice' ||
+        (classified.options.length === 4 &&
+          answers.some((answer) => classified.options.includes(answer))));
     if (!usable && !answers.length) skipped.push({ fileName, reason: 'no_answers' });
     else if (!usable) skipped.push({ fileName, reason: 'no_prompt' });
     const concept =
@@ -323,6 +326,18 @@ function resolveAnswerMode(
   return 'write';
 }
 
+/** A hint must never reveal one of the accepted answers before grading. */
+function safeHint(variant: ContentVariant) {
+  const hint = variant.hint.trim();
+  if (!hint) return undefined;
+  const normalizedHint = normalizeAnswerText(hint);
+  const leaksSolution = variant.answers.some((answer) => {
+    const normalizedAnswer = normalizeAnswerText(answer);
+    return normalizedAnswer.length > 1 && normalizedHint.includes(normalizedAnswer);
+  });
+  return leaksSolution ? undefined : hint;
+}
+
 export function toQuestion(
   concept: ContentConcept,
   variant: ContentVariant,
@@ -362,7 +377,7 @@ export function toQuestion(
     options: options.length ? options : undefined,
     answer: variant.primaryAnswer,
     acceptedAnswers: variant.answers,
-    hint: variant.hint || undefined,
+    hint: safeHint(variant),
     hintKind: variant.hintKind,
     explanation: '',
     review: '',
@@ -402,12 +417,24 @@ export function getProfileQuestions(
       ({ variant }) =>
         variant.usable &&
         variant.route === pair &&
-        variant.level === profile.level,
+        variant.level === profile.level &&
+        matchesContentFilter(variant, profile.filter ?? 'all'),
     )
     .sort((a, b) => a.variant.code.localeCompare(b.variant.code))
     .map(({ concept, variant }) =>
       toQuestion(concept, variant, pool, profile.answerMode ?? 'auto'),
     );
+}
+
+/** Maps legacy U records into the same learner-facing T/C/Z filters. */
+export function contentFilterFor(variant: ContentVariant): Exclude<NonNullable<LearningProfile['filter']>, 'all'> {
+  if (variant.declaredFlag === 'Z' || variant.kind === 'choice') return 'Z';
+  if (variant.declaredFlag === 'C' || variant.kind === 'cloze') return 'C';
+  return 'T';
+}
+
+function matchesContentFilter(variant: ContentVariant, filter: NonNullable<LearningProfile['filter']>) {
+  return filter === 'all' || contentFilterFor(variant) === filter;
 }
 
 export function getLevelAvailability(
@@ -417,7 +444,11 @@ export function getLevelAvailability(
   const pair = languagePair(profile);
   const counts = new Map<number, Map<ExerciseKind, number>>();
   for (const { variant } of pairs(database)) {
-    if (!variant.usable || variant.route !== pair) continue;
+    if (
+      !variant.usable ||
+      variant.route !== pair ||
+      !matchesContentFilter(variant, profile.filter ?? 'all')
+    ) continue;
     const kinds = counts.get(variant.level) ?? new Map<ExerciseKind, number>();
     kinds.set(variant.kind, (kinds.get(variant.kind) ?? 0) + 1);
     counts.set(variant.level, kinds);
