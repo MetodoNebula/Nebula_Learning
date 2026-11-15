@@ -17,6 +17,7 @@ const types = {
   '.jpeg': 'image/jpeg',
   '.webp': 'image/webp',
   '.gif': 'image/gif',
+  '.svg': 'image/svg+xml',
 };
 
 if (!existsSync(root)) {
