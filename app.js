@@ -252,9 +252,17 @@ const T = {
   },
 };
 
+const UI = {
+  1: { titles: ['Which language do you speak?', 'Which language would you like to learn?', 'Choose your level'], subtitles: ['Choose your starting language to tailor the lessons.', 'We will show exercises in the language you choose.', 'Pick an available level, then start practicing.'], back: 'Back', details: 'Lesson settings', filter: 'Exercise filter', filters: ['All formats', 'Multiple choice', 'Complete the sentence', 'Translation and writing'], collection: 'In this level', other: 'Another language', otherHint: 'Learn with pictures' },
+  2: { titles: ['Quelle langue parlez-vous ?', 'Quelle langue voulez-vous apprendre ?', 'Choisissez votre niveau'], subtitles: ['Choisissez votre langue de départ.', 'Nous afficherons les exercices dans la langue choisie.', 'Choisissez un niveau disponible pour commencer.'], back: 'Retour', details: 'Réglages', filter: 'Filtre des exercices', filters: ['Tous les formats', 'Choix multiple', 'Compléter la phrase', 'Traduction et écriture'], collection: 'Dans ce niveau', other: 'Autre langue', otherHint: 'Apprendre avec des images' },
+  3: { titles: ['¿Qué idioma hablas?', '¿Qué idioma quieres aprender?', 'Elige tu nivel'], subtitles: ['Selecciona el idioma que hablas para adaptar las lecciones.', 'Te mostraremos ejercicios en el idioma que elijas.', 'Elige un nivel disponible y empieza a practicar.'], back: 'Volver', details: 'Configura tu práctica', filter: 'Filtra los ejercicios', filters: ['Todos los formatos', 'Opción múltiple', 'Completar frases', 'Traducción y escritura'], collection: 'En este nivel', other: 'Otro idioma', otherHint: 'Aprender con imágenes' },
+  4: { titles: ['Che lingua parli?', 'Quale lingua vuoi imparare?', 'Scegli il livello'], subtitles: ['Scegli la lingua di partenza.', 'Mostreremo gli esercizi nella lingua scelta.', 'Scegli un livello disponibile e inizia.'], back: 'Indietro', details: 'Impostazioni', filter: 'Filtro esercizi', filters: ['Tutti i formati', 'Scelta multipla', 'Completa la frase', 'Traduzione e scrittura'], collection: 'In questo livello', other: 'Altra lingua', otherHint: 'Impara con le immagini' },
+  5: { titles: ['Welche Sprache sprichst du?', 'Welche Sprache möchtest du lernen?', 'Wähle deine Stufe'], subtitles: ['Wähle deine Ausgangssprache.', 'Wir zeigen Übungen in deiner Zielsprache.', 'Wähle eine verfügbare Stufe und beginne.'], back: 'Zurück', details: 'Einstellungen', filter: 'Übungsfilter', filters: ['Alle Formate', 'Auswahl', 'Satz ergänzen', 'Übersetzen und schreiben'], collection: 'In dieser Stufe', other: 'Andere Sprache', otherHint: 'Mit Bildern lernen' },
+};
+
 const state = {
-  native: '3',
-  target: '1',
+  native: '',
+  target: '',
   level: 1,
   mode: 'auto',
   filter: 'all',
@@ -283,6 +291,7 @@ const esc = (value) =>
       })[character],
   );
 const t = () => T[state.reader];
+const ui = () => UI[state.reader];
 const route = () => (state.native === 'other' ? state.target : state.native) + state.target;
 const normalize = (value) =>
   value
@@ -346,11 +355,12 @@ function levelCounts() {
 function shell(content) {
   app.innerHTML = `<div class="shell">
     <header class="top">
-      <div class="brand"><span class="mark">N</span><span>Nebula Tech<br><span class="muted" style="font-size:.8rem">${esc(t().lead.split(',')[0])}</span></span></div>
-      <span class="pill">GitHub Pages</span>
+      <div class="brand"><span class="mark">N</span><span>Nebula <em>Tech</em></span></div>
+      <span class="top-label">Language Lab</span>
     </header>
     ${content}
   </div>`;
+  window.scrollTo(0, 0);
 }
 
 function menu(message = '') {
@@ -362,16 +372,13 @@ function menu(message = '') {
   const current = counts[state.level] ?? { total: 0 };
   const languageButton = (id, selected, attribute) =>
     `<button class="language-flag" type="button" ${attribute}="${id}" aria-pressed="${selected}">
-      <img src="${flags[id]}" alt="" width="38" height="27" />
-      <span>${esc(endonyms[id])}</span>
+      <img src="${flags[id]}" alt="" width="76" height="52" />
+      <strong>${esc(endonyms[id])}</strong>
     </button>`;
-  shell(`<section class="grid">
-    <div>
-      <span class="pill">${esc(t().level)} ${state.level}</span>
-      <span class="pill">${esc(route())}</span>
-      <h1>${esc(database.concepts.length)} conceptos · ${esc(variants.filter((v) => v.variant.usable).length)} fichas</h1>
-      <p class="muted">${esc(t().lead)}</p>
-      <h2>${esc(t().formats)}</h2>
+  shell(`<section class="grid step-${state.setupStep}">
+    <aside class="content-summary" ${state.setupStep !== 3 ? 'hidden' : ''}>
+      <p class="eyebrow">${esc(ui().collection)}</p>
+      <h2>${esc(t().level)} ${state.level} <span class="summary-count">${esc(t().exercises(current.total))}</span></h2>
       <div class="formats">
         ${['naming', 'translation', 'choice', 'cloze']
           .map(
@@ -380,42 +387,40 @@ function menu(message = '') {
           )
           .join('')}
       </div>
-    </div>
-    <div class="card">
+    </aside>
+    <div class="card setup-card">
       <div class="setup-progress">
-        <span class="${state.setupStep === 1 ? 'active' : ''}">1 · ${esc(t().speak)}</span>
-        <span class="${state.setupStep === 2 ? 'active' : ''}">2 · ${esc(t().learn)}</span>
-        <span class="${state.setupStep === 3 ? 'active' : ''}">3 · ${esc(t().level)}</span>
+        <span class="${state.setupStep === 1 ? 'active' : ''}"><i>1</i>${esc(t().speak)}</span>
+        <span class="${state.setupStep === 2 ? 'active' : ''}"><i>2</i>${esc(t().learn)}</span>
+        <span class="${state.setupStep === 3 ? 'active' : ''}"><i>3</i>${esc(t().level)}</span>
       </div>
+      ${state.setupStep > 1 ? `<button class="text-button setup-back" id="back" type="button">← ${esc(ui().back)}</button>` : ''}
+      <h1>${esc(ui().titles[state.setupStep - 1])}</h1>
+      <p class="setup-subtitle">${esc(ui().subtitles[state.setupStep - 1])}</p>
       ${state.setupStep === 1 ? `<fieldset class="language-picker">
-        <legend>${esc(t().speak)}</legend>
+        <legend class="sr-only">${esc(t().speak)}</legend>
         <div class="language-flags">
           ${[1, 2, 3, 4, 5].map((id) => languageButton(id, state.native === String(id), 'data-native')).join('')}
           <button class="language-flag other-language" type="button" data-native="other" aria-pressed="${state.native === 'other'}">
             <span class="other-symbol" aria-hidden="true">U</span>
-            <span>${esc(t().other)}</span>
+            <strong>${esc(ui().other)}</strong><small>${esc(ui().otherHint)}</small>
           </button>
         </div>
       </fieldset>` : ''}
       ${state.setupStep === 2 ? `<fieldset class="language-picker">
-        <legend>${esc(t().learn)}</legend>
+        <legend class="sr-only">${esc(t().learn)}</legend>
         <div class="language-flags">
           ${[1, 2, 3, 4, 5].map((id) => languageButton(id, state.target === String(id), 'data-target')).join('')}
         </div>
-        <button class="text-button" id="back" type="button">← ${esc(t().menu)}</button>
       </fieldset>` : ''}
-      ${state.setupStep === 3 ? `<button class="text-button setup-back" id="back" type="button">← ${esc(t().menu)}</button>
-      <label>${esc(t().level)}
-        <select id="level">
+      ${state.setupStep === 3 ? `<fieldset class="level-picker"><legend class="sr-only">${esc(t().level)}</legend><div class="level-grid">
           ${Array.from({ length: 9 }, (_, i) => i + 1)
             .map((level) => {
               const total = counts[level]?.total ?? 0;
-              return `<option value="${level}" ${state.level === level ? 'selected' : ''} ${total ? '' : 'disabled'}>${level} · ${total ? esc(t().exercises(total)) : esc(t().empty)}</option>`;
+              return `<button type="button" class="level-option" data-level="${level}" aria-pressed="${state.level === level}" ${total ? '' : 'disabled'}><strong>${level}</strong><small>${total ? esc(t().exercises(total)) : esc(t().empty)}</small></button>`;
             })
-            .join('')}
-        </select>
-      </label>
-      <label>${esc(t().answering)}
+            .join('')}</div></fieldset>
+      <div class="settings-title">${esc(ui().details)}</div><div class="settings-grid"><label>${esc(t().answering)}
         <select id="mode">
           ${['auto', 'write', 'select']
             .map(
@@ -425,14 +430,11 @@ function menu(message = '') {
             .join('')}
         </select>
       </label>
-      <label>Filtro de ejercicio
+      <label>${esc(ui().filter)}
         <select id="filter">
-          <option value="all" ${state.filter === 'all' ? 'selected' : ''}>Todos los formatos</option>
-          <option value="Z" ${state.filter === 'Z' ? 'selected' : ''}>Z · opción múltiple</option>
-          <option value="C" ${state.filter === 'C' ? 'selected' : ''}>C · completar</option>
-          <option value="T" ${state.filter === 'T' ? 'selected' : ''}>T · traducción y respuesta escrita</option>
+          ${['all','Z','C','T'].map((code, index) => `<option value="${code}" ${state.filter === code ? 'selected' : ''}>${esc(ui().filters[index])}</option>`).join('')}
         </select>
-      </label>
+      </label></div>
       ${message ? `<p class="warn">${esc(message)}</p>` : ''}
       <button class="primary" id="start" ${current.total ? '' : 'disabled'}>${esc(t().start)}</button>` : ''}
     </div>
@@ -456,10 +458,10 @@ function menu(message = '') {
     const element = app.querySelector('#' + id);
     if (element) element.addEventListener('change', handler);
   };
-  on('level', (event) => {
-    state.level = Number(event.target.value);
+  app.querySelectorAll('[data-level]').forEach((button) => button.addEventListener('click', () => {
+    state.level = Number(button.dataset.level);
     menu();
-  });
+  }));
   on('mode', (event) => {
     state.mode = event.target.value;
     menu();
@@ -523,7 +525,7 @@ function card() {
     <div class="lesson-head">
       <div>
         <span class="pill">${esc(t().kinds[variant.kind])}</span>
-        <span class="pill">${esc(variant.code)} · ${esc(variant.route)}</span>
+        <span class="pill">${esc(t().level)} ${state.level}</span>
         <h2>${esc(t().prompts[variant.kind](target))}</h2>
       </div>
       <button class="lesson-menu" id="exit" type="button" aria-label="${esc(t().menu)}">
@@ -571,7 +573,8 @@ function card() {
 }
 
 function check(variant) {
-  if (!state.chosen.trim()) return;
+  if (state.checked || !state.chosen.trim()) return;
+  state.checked = true;
   const result = quality(state.chosen, variant.answers);
   if (result !== 'none') state.score += 1;
   state.log.push({
@@ -598,6 +601,7 @@ function check(variant) {
 
 function advance() {
   state.chosen = '';
+  state.checked = null;
   if (state.index >= state.cards.length - 1) return results();
   state.index += 1;
   card();
@@ -605,7 +609,7 @@ function advance() {
 
 function results() {
   shell(`<section class="lesson">
-    <span class="pill">${esc(route())} · ${esc(t().level)} ${state.level}</span>
+    <span class="pill">${esc(t().level)} ${state.level}</span>
     <h1>${esc(t().score(state.score, state.cards.length))}</h1>
     <h2>${esc(t().review)}</h2>
     <div class="review">
