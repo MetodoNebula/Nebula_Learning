@@ -695,6 +695,9 @@ button:focus-visible {
 }
 .route-summary { display: inline-flex; align-items: center; gap: 9px; margin: -10px 0 24px; padding: 7px 12px; border: 1px solid #46556d; border-radius: 99px; background: #191f2a; color: #d5dce8; font-size: .9rem; }
 .route-summary strong { color: var(--accent); }
+.type-picker { display: block; margin: 0 0 22px; color: var(--text); font-size: 1rem; font-weight: 700; }
+.type-picker select { margin-top: 8px; font-weight: 500; }
+.section-title { padding: 0; margin-bottom: 10px; color: var(--text); font-size: 1rem; font-weight: 700; }
 .unavailable-levels { margin: 12px 0 0; color: var(--muted); font-size: .82rem; }
 .settings-disclosure { margin: 26px 0 18px; border: 1px solid var(--line); border-radius: 11px; background: #1a202b; }
 .settings-disclosure > summary, .review-details > summary { cursor: pointer; padding: 13px 16px; color: var(--text); font-weight: 700; list-style-position: inside; }
@@ -714,6 +717,7 @@ button:focus-visible {
   .level-grid { gap: 9px; }
   .level-option { min-height: 64px; }
   .route-summary { margin-bottom: 20px; }
+  .type-picker { margin-bottom: 18px; }
   .settings-disclosure { margin: 20px 0 16px; }
   .result-actions { flex-direction: row; }
   .result-actions > button { flex: 1; }

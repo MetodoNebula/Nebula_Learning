@@ -273,11 +273,19 @@ const labNames = {
   4: 'Laboratorio linguistico',
   5: 'Sprachlabor',
 };
+const exerciseTypeLabels = {
+  1: { title: 'Choose exercise and level', intro: 'Choose what you want to practice, then pick a level.', label: 'Exercise type', all: 'All exercise types' },
+  2: { title: "Choisissez l’exercice et le niveau", intro: 'Choisissez le type d’exercice, puis un niveau.', label: "Type d’exercice", all: 'Tous les types' },
+  3: { title: 'Elige ejercicio y nivel', intro: 'Selecciona qué quieres practicar y después el nivel.', label: 'Tipo de ejercicio', all: 'Todos los tipos' },
+  4: { title: "Scegli l’esercizio e il livello", intro: 'Scegli cosa esercitare e poi il livello.', label: 'Tipo di esercizio', all: 'Tutti i tipi' },
+  5: { title: 'Wähle Übung und Stufe', intro: 'Wähle zuerst den Übungstyp und dann die Stufe.', label: 'Übungstyp', all: 'Alle Übungstypen' },
+};
 
 const state = {
   native: '',
   target: '',
   level: 1,
+  kind: 'all',
   mode: 'auto',
   filter: 'all',
   settingsOpen: false,
@@ -353,8 +361,20 @@ const answerMode = (variant) =>
   variant.kind === 'choice' || state.mode === 'select' ? 'select' : 'write';
 const contentFilter = (variant) =>
   variant.kind === 'choice' ? 'Z' : variant.kind === 'cloze' ? 'C' : 'T';
-const matchesFilter = (variant) =>
+const matchesCodeFilter = (variant) =>
   state.filter === 'all' || contentFilter(variant) === state.filter;
+const matchesFilter = (variant) =>
+  matchesCodeFilter(variant) && (state.kind === 'all' || variant.kind === state.kind);
+
+function typeCounts() {
+  const counts = { all: 0 };
+  for (const { variant } of variants) {
+    if (!variant.usable || variant.route !== route() || !matchesCodeFilter(variant)) continue;
+    counts.all += 1;
+    counts[variant.kind] = (counts[variant.kind] ?? 0) + 1;
+  }
+  return counts;
+}
 
 function levelCounts() {
   const counts = {};
@@ -381,6 +401,7 @@ function shell(content, scrollToTop = true) {
 
 function menu(message = '', preserveScroll = false) {
   const counts = levelCounts();
+  const types = typeCounts();
   const availableLevels = Array.from({ length: 9 }, (_, i) => i + 1).filter((level) => counts[level]?.total);
   const unavailable = Array.from({ length: 9 }, (_, i) => i + 1).filter((level) => !counts[level]?.total);
   if (!counts[state.level]) {
@@ -414,8 +435,8 @@ function menu(message = '', preserveScroll = false) {
         <span class="${state.setupStep === 3 ? 'active' : ''}"><i>3</i>${esc(t().level)}</span>
       </div>
       ${state.setupStep > 1 ? `<button class="text-button setup-back" id="back" type="button">← ${esc(ui().back)}</button>` : ''}
-      <h1>${esc(ui().titles[state.setupStep - 1])}</h1>
-      <p class="setup-subtitle">${esc(ui().subtitles[state.setupStep - 1])}</p>
+      <h1>${esc(state.setupStep === 3 ? exerciseTypeLabels[state.reader].title : ui().titles[state.setupStep - 1])}</h1>
+      <p class="setup-subtitle">${esc(state.setupStep === 3 ? exerciseTypeLabels[state.reader].intro : ui().subtitles[state.setupStep - 1])}</p>
       ${state.setupStep === 3 ? `<p class="route-summary"><span>${esc(state.native === 'other' ? ui().other : endonyms[state.native])}</span><span aria-hidden="true">→</span><strong>${esc(endonyms[state.target])}</strong></p>` : ''}
       ${state.setupStep === 1 ? `<fieldset class="language-picker">
         <legend class="sr-only">${esc(t().speak)}</legend>
@@ -433,7 +454,16 @@ function menu(message = '', preserveScroll = false) {
           ${[1, 2, 3, 4, 5].map((id) => languageButton(id, state.target === String(id), 'data-target')).join('')}
         </div>
       </fieldset>` : ''}
-      ${state.setupStep === 3 ? `<fieldset class="level-picker"><legend class="sr-only">${esc(t().level)}</legend><div class="level-grid">
+      ${state.setupStep === 3 ? `<label class="type-picker">${esc(exerciseTypeLabels[state.reader].label)}
+        <select id="kind">
+          ${['all', 'naming', 'translation', 'choice', 'cloze'].map((kind) => {
+            const total = types[kind] ?? 0;
+            const label = kind === 'all' ? exerciseTypeLabels[state.reader].all : t().kinds[kind];
+            return `<option value="${kind}" ${state.kind === kind ? 'selected' : ''} ${total ? '' : 'disabled'}>${esc(label)} · ${esc(t().exercises(total))}</option>`;
+          }).join('')}
+        </select>
+      </label>
+      <fieldset class="level-picker"><legend class="section-title">${esc(t().level)}</legend><div class="level-grid">
           ${availableLevels
             .map((level) => {
               const total = counts[level].total;
@@ -462,6 +492,10 @@ function menu(message = '', preserveScroll = false) {
   </section>`, !preserveScroll);
   app.querySelectorAll('[data-native]').forEach((button) =>
     button.addEventListener('click', () => {
+    if (state.native !== button.dataset.native) {
+      state.kind = 'all';
+      state.filter = 'all';
+    }
     state.native = button.dataset.native;
     if (state.native !== 'other') state.reader = state.native;
     state.setupStep = 2;
@@ -470,6 +504,10 @@ function menu(message = '', preserveScroll = false) {
   );
   app.querySelectorAll('[data-target]').forEach((button) =>
     button.addEventListener('click', () => {
+    if (state.target !== button.dataset.target) {
+      state.kind = 'all';
+      state.filter = 'all';
+    }
     state.target = button.dataset.target;
     state.setupStep = 3;
     menu();
@@ -483,12 +521,17 @@ function menu(message = '', preserveScroll = false) {
     state.level = Number(button.dataset.level);
     menu('', true);
   }));
+  on('kind', (event) => {
+    state.kind = event.target.value;
+    menu('', true);
+  });
   on('mode', (event) => {
     state.mode = event.target.value;
     menu('', true);
   });
   on('filter', (event) => {
     state.filter = event.target.value;
+    state.kind = 'all';
     menu('', true);
   });
   app.querySelector('.settings-disclosure')?.addEventListener('toggle', (event) => {
